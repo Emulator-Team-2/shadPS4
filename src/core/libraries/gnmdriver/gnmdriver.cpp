@@ -161,6 +161,7 @@ static constexpr std::array InitSequence200{
     0xc0016900u, 0x280u, 0x80008u,
     0xc0016900u, 0x281u, 0xffff0000u,
     0xc0016900u, 0x204u, 0u,
+    0xc0016900u, 0x205u, 4u,
     0xc0016900u, 0x206u, 0x43fu,
     0xc0016900u, 0x83u,  0xffffu,
     0xc0016900u, 0x317u, 0x10u,
@@ -193,7 +194,7 @@ static constexpr std::array InitSequence200{
     0xc0036900u, 0x295u, 0x100u, 0x100u, 4u,
     0xc0017900u, 0x200u, 0xe0000000u,
 };
-static_assert(InitSequence200.size() == 0x76 + 2);
+static_assert(InitSequence200.size() == 0x79 + 2);
 
 static constexpr std::array InitSequence350{
     // A fake preamble to mimic context reset sent by FW

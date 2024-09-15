@@ -188,13 +188,12 @@ const ComputePipeline* PipelineCache::GetComputePipeline() {
 }
 
 bool ShouldSkipShader(u64 shader_hash, const char* shader_type) {
-    static constexpr std::array<u64, 19> skip_hashes = {
+    static constexpr std::array<u64, 22> skip_hashes = {
         0xccdebd802401e5ac, 0x29966d1be34790b4, 0x29966d1be34790b4, 0x672262b7f40b5c3d, 0x672262b76bb7e335, 
         0x782d705bc1c01219, 0x4add57aa5eec8eb1, 0x107d87f9d56574cf, 0x107d87f956453c3e, 0x29980d63bb67768a,
         0x29980d635087a0e7, 0x24b77f53dd31047c, 0x24b77f535087a0e7, 0x20bae467b6468eda, 0x20bae4675087a0e7,
-        0xd0e33fa6e9381f8f, 0xd0e33fa65087a0e7, 0x7c0bee17cbe29a81, 0x7c0bee175087a0e7}; 
-                                                                                           
-    
+        0xd0e33fa6e9381f8f, 0xd0e33fa65087a0e7, 0x7c0bee17cbe29a81, 0x7c0bee175087a0e7, 0xabd418f256453c3e,
+        0xabd418f2b4587d5d, 0xccdebd80d1b8f55c};                                                                                           
     if (std::ranges::contains(skip_hashes, shader_hash)) {
         LOG_WARNING(Render_Vulkan, "Skipped {} shader hash {:#x}.", shader_type, shader_hash);
         return true;

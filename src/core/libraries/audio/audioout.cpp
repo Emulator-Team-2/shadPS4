@@ -16,6 +16,7 @@
 
 namespace Libraries::AudioOut {
 
+std::mutex port_open_mutex{};
 std::array<PortOut, SCE_AUDIO_OUT_NUM_PORTS> ports_out{};
 
 static std::unique_ptr<AudioOutBackend> audio;
@@ -331,6 +332,7 @@ s32 PS4_SYSV_ABI sceAudioOutOpen(UserService::OrbisUserServiceUserId user_id,
         return ORBIS_AUDIO_OUT_ERROR_INVALID_FORMAT;
     }
 
+    std::unique_lock open_lock{port_open_mutex};
     const auto port =
         std::ranges::find_if(ports_out, [&](const PortOut& p) { return p.impl == nullptr; });
     if (port == ports_out.end()) {
@@ -338,7 +340,7 @@ s32 PS4_SYSV_ABI sceAudioOutOpen(UserService::OrbisUserServiceUserId user_id,
         return ORBIS_AUDIO_OUT_ERROR_PORT_FULL;
     }
 
-    std::scoped_lock lock(port->mutex);
+    std::unique_lock port_lock(port->mutex);
 
     port->type = port_type;
     port->format_info = GetFormatInfo(format);

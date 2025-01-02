@@ -97,12 +97,13 @@ int PS4_SYSV_ABI sceAudioOutClose(s32 handle) {
         if (!port.IsOpen()) {
             return ORBIS_AUDIO_OUT_ERROR_INVALID_PORT;
         }
-        port.output_thread.Stop();
         std::free(port.output_buffer);
         port.output_buffer = nullptr;
         port.output_ready = false;
         port.impl = nullptr;
     }
+    // Stop outside of lock scope to prevent deadlocks.
+    port.output_thread.Stop();
     return ORBIS_OK;
 }
 

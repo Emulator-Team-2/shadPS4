@@ -264,6 +264,7 @@ set(NETWORK_LIBS src/core/libraries/network/http.cpp
                  src/core/libraries/network/ssl.cpp
                  src/core/libraries/network/ssl.h
                  src/core/libraries/network/posix_sockets.cpp
+                 src/core/libraries/network/p2p_sockets.cpp
                  src/core/libraries/network/sockets.h
                  src/core/libraries/network/net_error.h
                  src/core/libraries/network/epoll.cpp

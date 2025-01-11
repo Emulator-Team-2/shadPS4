@@ -517,9 +517,9 @@ PipelineCache::Result PipelineCache::GetProgram(Stage stage, LogicalStage l_stag
         auto start = binding;
         const auto module = CompileModule(program->info, runtime_info, params.code, 0, binding);
         const auto spec = Shader::StageSpecialization(program->info, runtime_info, profile, start);
+        const auto fetch_shader = spec.fetch_shader_data;
         program->AddPermut(module, std::move(spec));
-        return std::make_tuple(&program->info, module, spec.fetch_shader_data,
-                               HashCombine(params.hash, 0));
+        return std::make_tuple(&program->info, module, fetch_shader, HashCombine(params.hash, 0));
     }
     it_pgm.value()->info.user_data = params.user_data;
 
@@ -527,10 +527,12 @@ PipelineCache::Result PipelineCache::GetProgram(Stage stage, LogicalStage l_stag
     auto& info = program->info;
     info.RefreshFlatBuf();
     const auto spec = Shader::StageSpecialization(info, runtime_info, profile, binding);
+    const auto fetch_shader = spec.fetch_shader_data;
     size_t perm_idx = program->modules.size();
     vk::ShaderModule module{};
 
-    const auto it = std::ranges::find(program->modules, spec, &Program::Module::spec);
+    const auto it = std::ranges::find_if(
+        program->modules, [&spec](const auto& module) { return module.spec.IsCompatible(spec); });
     if (it == program->modules.end()) {
         auto new_info = Shader::Info(stage, l_stage, params);
         module = CompileModule(new_info, runtime_info, params.code, perm_idx, binding);
@@ -540,8 +542,7 @@ PipelineCache::Result PipelineCache::GetProgram(Stage stage, LogicalStage l_stag
         module = it->module;
         perm_idx = std::distance(program->modules.begin(), it);
     }
-    return std::make_tuple(&info, module, spec.fetch_shader_data,
-                           HashCombine(params.hash, perm_idx));
+    return std::make_tuple(&info, module, fetch_shader, HashCombine(params.hash, perm_idx));
 }
 
 std::optional<vk::ShaderModule> PipelineCache::ReplaceShader(vk::ShaderModule module,

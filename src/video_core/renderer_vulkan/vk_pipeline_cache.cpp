@@ -273,13 +273,13 @@ bool PipelineCache::RefreshGraphicsKey() {
         LiverpoolToVK::DepthFormat(regs.depth_buffer.z_info.format,
                                    regs.depth_buffer.stencil_info.format),
         vk::FormatFeatureFlagBits2::eDepthStencilAttachment);
-    if (regs.depth_buffer.DepthValid()) {
+    if (regs.depth_buffer.DepthWriteValid()) {
         key.depth_format = depth_format;
     } else {
         key.depth_format = vk::Format::eUndefined;
         key.depth_test_enable = false;
     }
-    if (regs.depth_buffer.StencilValid()) {
+    if (regs.depth_buffer.StencilWriteValid()) {
         key.stencil_format = depth_format;
     } else {
         key.stencil_format = vk::Format::eUndefined;

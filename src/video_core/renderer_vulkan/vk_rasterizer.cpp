@@ -70,6 +70,24 @@ bool Rasterizer::FilterDraw() {
         return false;
     }
 
+    const bool cb_disabled =
+        regs.color_control.mode == AmdGpu::Liverpool::ColorControl::OperationMode::Disable;
+    const auto depth_copy =
+        regs.depth_buffer.DepthReadValid() && regs.depth_buffer.DepthWriteValid() &&
+        regs.depth_render_override.force_z_dirty && regs.depth_render_override.force_z_valid;
+    const auto stencil_copy = regs.depth_buffer.StencilReadValid() &&
+                              regs.depth_buffer.StencilWriteValid() &&
+                              regs.depth_render_override.force_stencil_dirty &&
+                              regs.depth_render_override.force_stencil_valid;
+    if (cb_disabled && (depth_copy || stencil_copy)) {
+        // Games may disable color buffer and enable force depth/stencil dirty and valid to
+        // do a copy from one depth-stencil surface to another, without a pixel shader.
+        // We need to detect this case and perform the copy, otherwise it will have no effect.
+        LOG_TRACE(Render_Vulkan, "Performing depth-stencil override copy");
+        DepthStencilCopy(depth_copy, stencil_copy);
+        return false;
+    }
+
     return true;
 }
 
@@ -136,8 +154,8 @@ RenderState Rasterizer::PrepareRenderState(u32 mrt_mask) {
         };
     }
 
-    if ((regs.depth_control.depth_enable && regs.depth_buffer.DepthValid()) ||
-        (regs.depth_control.stencil_enable && regs.depth_buffer.StencilValid())) {
+    if ((regs.depth_control.depth_enable && regs.depth_buffer.DepthWriteValid()) ||
+        (regs.depth_control.stencil_enable && regs.depth_buffer.StencilWriteValid())) {
         const auto htile_address = regs.depth_htile_data_base.GetAddress();
         const auto& hint = liverpool->last_db_extent;
         auto& [image_id, desc] =
@@ -157,8 +175,8 @@ RenderState Rasterizer::PrepareRenderState(u32 mrt_mask) {
 
         state.width = std::min<u32>(state.width, image.info.size.width);
         state.height = std::min<u32>(state.height, image.info.size.height);
-        state.has_depth = regs.depth_buffer.DepthValid();
-        state.has_stencil = regs.depth_buffer.StencilValid();
+        state.has_depth = regs.depth_buffer.DepthWriteValid();
+        state.has_stencil = regs.depth_buffer.StencilWriteValid();
         if (state.has_depth) {
             state.depth_attachment = {
                 .imageView = *image_view.image_view,
@@ -897,6 +915,59 @@ void Rasterizer::Resolve() {
         cmdbuf.resolveImage(mrt0_image.image, vk::ImageLayout::eTransferSrcOptimal,
                             mrt1_image.image, vk::ImageLayout::eTransferDstOptimal, region);
     }
+}
+
+void Rasterizer::DepthStencilCopy(bool is_depth, bool is_stencil) {
+    auto& regs = liverpool->regs;
+
+    auto read_desc = VideoCore::TextureCache::DepthTargetDesc(
+        regs.depth_buffer, regs.depth_view, regs.depth_control,
+        regs.depth_htile_data_base.GetAddress(), liverpool->last_db_extent, true);
+    auto write_desc = VideoCore::TextureCache::DepthTargetDesc(
+        regs.depth_buffer, regs.depth_view, regs.depth_control,
+        regs.depth_htile_data_base.GetAddress(), liverpool->last_db_extent, false);
+
+    auto& read_image = texture_cache.GetImage(texture_cache.FindImage(read_desc));
+    auto& write_image = texture_cache.GetImage(texture_cache.FindImage(write_desc));
+
+    VideoCore::SubresourceRange sub_range;
+    sub_range.base.layer = liverpool->regs.depth_view.slice_start;
+    sub_range.extent.layers = liverpool->regs.depth_view.NumSlices() - sub_range.base.layer;
+
+    read_image.Transit(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits2::eTransferRead,
+                       sub_range);
+    write_image.Transit(vk::ImageLayout::eTransferDstOptimal, vk::AccessFlagBits2::eTransferWrite,
+                        sub_range);
+
+    auto aspect_mask = vk::ImageAspectFlags(0);
+    if (is_depth) {
+        aspect_mask |= vk::ImageAspectFlagBits::eDepth;
+    }
+    if (is_stencil) {
+        aspect_mask |= vk::ImageAspectFlagBits::eStencil;
+    }
+    vk::ImageCopy region = {
+        .srcSubresource =
+            {
+                .aspectMask = aspect_mask,
+                .mipLevel = 0,
+                .baseArrayLayer = sub_range.base.layer,
+                .layerCount = sub_range.extent.layers,
+            },
+        .srcOffset = {0, 0, 0},
+        .dstSubresource =
+            {
+                .aspectMask = aspect_mask,
+                .mipLevel = 0,
+                .baseArrayLayer = sub_range.base.layer,
+                .layerCount = sub_range.extent.layers,
+            },
+        .dstOffset = {0, 0, 0},
+        .extent = {write_image.info.size.width, write_image.info.size.height, 1},
+    };
+    const auto cmdbuf = scheduler.CommandBuffer();
+    cmdbuf.copyImage(read_image.image, vk::ImageLayout::eTransferSrcOptimal, write_image.image,
+                     vk::ImageLayout::eTransferDstOptimal, region);
 }
 
 void Rasterizer::InlineData(VAddr address, const void* value, u32 num_bytes, bool is_gds) {

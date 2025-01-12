@@ -79,9 +79,9 @@ public:
         DepthTargetDesc(const AmdGpu::Liverpool::DepthBuffer& buffer,
                         const AmdGpu::Liverpool::DepthView& view,
                         const AmdGpu::Liverpool::DepthControl& ctl, VAddr htile_address,
-                        const AmdGpu::Liverpool::CbDbExtent& hint = {})
+                        const AmdGpu::Liverpool::CbDbExtent& hint = {}, bool buffer_read = false)
             : BaseDesc{BindingType::DepthTarget,
-                       ImageInfo{buffer, view.NumSlices(), htile_address, hint},
+                       ImageInfo{buffer, view.NumSlices(), htile_address, hint, buffer_read},
                        ImageViewInfo{buffer, view, ctl}} {}
     };
 

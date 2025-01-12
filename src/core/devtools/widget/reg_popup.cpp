@@ -105,7 +105,10 @@ void RegPopup::DrawDepthBuffer(const DepthBuffer& depth_data) {
             "DEPTH_SLICE.TILE_MAX",           depth_buffer.depth_slice.tile_max,
             "Pitch()",                        depth_buffer.Pitch(),
             "Height()",                       depth_buffer.Height(),
-            "Address()",                      depth_buffer.Address(),
+            "DepthReadAddress()",             depth_buffer.DepthReadAddress(),
+            "DepthWriteAddress()",            depth_buffer.DepthWriteAddress(),
+            "StencilReadAddress()",           depth_buffer.StencilReadAddress(),
+            "StencilWriteAddress()",          depth_buffer.StencilWriteAddress(),
             "NumSamples()",                   depth_buffer.NumSamples(),
             "NumBits()",                      depth_buffer.NumBits(),
             "GetDepthSliceSize()",            depth_buffer.GetDepthSliceSize()

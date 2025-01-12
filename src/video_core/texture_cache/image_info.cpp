@@ -98,7 +98,8 @@ ImageInfo::ImageInfo(const AmdGpu::Liverpool::ColorBuffer& buffer,
 }
 
 ImageInfo::ImageInfo(const AmdGpu::Liverpool::DepthBuffer& buffer, u32 num_slices,
-                     VAddr htile_address, const AmdGpu::Liverpool::CbDbExtent& hint) noexcept {
+                     VAddr htile_address, const AmdGpu::Liverpool::CbDbExtent& hint,
+                     bool buffer_read) noexcept {
     props.is_tiled = false;
     pixel_format = LiverpoolToVK::DepthFormat(buffer.z_info.format, buffer.stencil_info.format);
     type = vk::ImageType::e2D;
@@ -111,10 +112,10 @@ ImageInfo::ImageInfo(const AmdGpu::Liverpool::DepthBuffer& buffer, u32 num_slice
     resources.layers = num_slices;
     meta_info.htile_addr = buffer.z_info.tile_surface_en ? htile_address : 0;
 
-    stencil_addr = buffer.StencilAddress();
+    stencil_addr = buffer_read ? buffer.StencilReadAddress() : buffer.StencilWriteAddress();
     stencil_size = pitch * size.height * sizeof(u8);
 
-    guest_address = buffer.Address();
+    guest_address = buffer_read ? buffer.DepthReadAddress() : buffer.DepthWriteAddress();
     const auto depth_slice_sz = buffer.GetDepthSliceSize();
     guest_size = depth_slice_sz * num_slices;
     mips_layout.emplace_back(depth_slice_sz, pitch, 0);

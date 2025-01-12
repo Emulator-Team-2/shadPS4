@@ -73,12 +73,14 @@ bool Rasterizer::FilterDraw() {
     const bool cb_disabled =
         regs.color_control.mode == AmdGpu::Liverpool::ColorControl::OperationMode::Disable;
     const auto depth_copy =
+        regs.depth_render_override.force_z_dirty && regs.depth_render_override.force_z_valid &&
         regs.depth_buffer.DepthReadValid() && regs.depth_buffer.DepthWriteValid() &&
-        regs.depth_render_override.force_z_dirty && regs.depth_render_override.force_z_valid;
-    const auto stencil_copy = regs.depth_buffer.StencilReadValid() &&
-                              regs.depth_buffer.StencilWriteValid() &&
-                              regs.depth_render_override.force_stencil_dirty &&
-                              regs.depth_render_override.force_stencil_valid;
+        regs.depth_buffer.DepthReadAddress() != regs.depth_buffer.DepthWriteAddress();
+    const auto stencil_copy =
+        regs.depth_render_override.force_stencil_dirty &&
+        regs.depth_render_override.force_stencil_valid && regs.depth_buffer.StencilReadValid() &&
+        regs.depth_buffer.StencilWriteValid() &&
+        regs.depth_buffer.StencilReadAddress() != regs.depth_buffer.StencilWriteAddress();
     if (cb_disabled && (depth_copy || stencil_copy)) {
         // Games may disable color buffer and enable force depth/stencil dirty and valid to
         // do a copy from one depth-stencil surface to another, without a pixel shader.

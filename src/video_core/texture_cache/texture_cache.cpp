@@ -696,6 +696,10 @@ ImageView& TextureCache::FindDepthTarget(ImageId image_id, const ImageDesc& desc
             info.guest_address = desc.info.stencil_addr;
             info.guest_size = desc.info.stencil_size;
             info.size = desc.info.size;
+            info.pixel_format = vk::Format::eR8Uint; // <-- ADD THIS: Stencil uses R8Uint
+            info.props.is_depth = false;             // <-- ADD THIS: Mark as non-depth
+            info.type = AmdGpu::ImageType::Color2D;  // <-- ADD THIS LINE
+            // Do NOT set has_stencil - this is a fake image
             stencil_id =
                 slot_images.insert(instance, scheduler, blit_helper, slot_image_views, info);
             RegisterImage(stencil_id);
